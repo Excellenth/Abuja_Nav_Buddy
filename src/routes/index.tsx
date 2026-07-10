@@ -151,7 +151,7 @@ function Home() {
               />
             </div>
 
-            <div className="h-[260px] overflow-hidden rounded-2xl border border-border bg-muted">
+            <div className="h-56 overflow-hidden rounded-2xl border border-border bg-muted sm:h-72">
               {mounted && (
                 <AbujaMap from={from} to={to} routeCoords={directions.routeCoords} />
               )}
@@ -161,7 +161,7 @@ function Home() {
               {directions.steps.map((s, i) => (
                 <li
                   key={i}
-                  className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4"
+                  className="flex items-start gap-3 rounded-2xl border border-border bg-card p-3 sm:p-4"
                 >
                   <div className="flex flex-col items-center">
                     <div
