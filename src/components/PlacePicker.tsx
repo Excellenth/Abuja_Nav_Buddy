@@ -188,7 +188,7 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
             className="w-full rounded-xl border border-border bg-background px-4 py-3 text-base shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
           />
 
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex flex-col gap-2 xs:flex-row sm:flex-row">
             <button
               type="button"
               onClick={useCurrent}
@@ -226,7 +226,7 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
                   No matches. Try a different name.
                 </div>
               )}
-              <ul className="max-h-72 overflow-y-auto">
+              <ul className="max-h-64 overflow-y-auto overscroll-contain">
                 {suggestions.map((s) => (
                   <li key={s.id}>
                     <button

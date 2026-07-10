@@ -75,10 +75,10 @@ function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-4">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
+        <div className="mx-auto grid max-w-3xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 sm:px-4 sm:py-4">
           <span
-            className="grid h-8 w-8 place-items-center rounded-lg text-primary-foreground"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-primary-foreground"
             style={{ background: "var(--gradient-hero)" }}
             aria-hidden
           >
@@ -87,15 +87,17 @@ function Home() {
               <circle cx="12" cy="9" r="2.5" />
             </svg>
           </span>
-          <h1 className="font-display text-lg font-extrabold tracking-tight">
+          <h1 className="min-w-0 truncate font-display text-base font-extrabold tracking-tight sm:text-lg">
             NaijaNav <span className="text-primary">Abuja</span>
           </h1>
-          <span className="ml-auto text-xs text-muted-foreground">FCT · Public transport</span>
+          <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs">
+            FCT
+          </span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-6 sm:py-10">
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-card)] sm:p-6">
+      <main className="mx-auto w-full max-w-3xl px-3 py-4 sm:px-4 sm:py-10">
+        <section className="rounded-2xl border border-border bg-card p-3 shadow-[var(--shadow-card)] sm:p-6">
           <div className="grid gap-4">
             <PlacePicker
               label="From"
@@ -149,7 +151,7 @@ function Home() {
               />
             </div>
 
-            <div className="h-[260px] overflow-hidden rounded-2xl border border-border bg-muted">
+            <div className="h-56 overflow-hidden rounded-2xl border border-border bg-muted sm:h-72">
               {mounted && (
                 <AbujaMap from={from} to={to} routeCoords={directions.routeCoords} />
               )}
@@ -159,7 +161,7 @@ function Home() {
               {directions.steps.map((s, i) => (
                 <li
                   key={i}
-                  className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4"
+                  className="flex items-start gap-3 rounded-2xl border border-border bg-card p-3 sm:p-4"
                 >
                   <div className="flex flex-col items-center">
                     <div
@@ -173,8 +175,10 @@ function Home() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <p className="font-semibold leading-snug">{s.label}</p>
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <p className="min-w-0 flex-1 text-sm font-semibold leading-snug sm:text-base">
+                        {s.label}
+                      </p>
                       <span className="shrink-0 text-sm font-semibold text-primary">
                         {s.priceNgn > 0 ? `₦${s.priceNgn.toLocaleString()}` : "Free"}
                       </span>
@@ -207,7 +211,13 @@ function Home() {
 
       {/* Map picker modal */}
       {pickTarget && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-background h-dvh-safe"
+          style={{
+            paddingTop: "env(safe-area-inset-top)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
           <div className="flex items-center gap-3 border-b border-border px-4 py-3">
             <button
               onClick={() => setPickTarget(null)}
@@ -248,14 +258,14 @@ function Metric({ label, value, emphasis }: { label: string; value: string; emph
   return (
     <div
       className={
-        "rounded-2xl border p-3 text-center " +
+        "min-w-0 rounded-2xl border p-2 text-center sm:p-3 " +
         (emphasis ? "border-primary bg-accent" : "border-border bg-card")
       }
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
-      <div className={"mt-0.5 font-display text-lg font-extrabold " + (emphasis ? "text-primary" : "")}>
+      <div className={"mt-0.5 truncate font-display text-base font-extrabold sm:text-lg " + (emphasis ? "text-primary" : "")}>
         {value}
       </div>
     </div>
