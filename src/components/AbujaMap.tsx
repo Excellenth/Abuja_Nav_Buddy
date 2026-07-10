@@ -5,11 +5,13 @@ type Props = {
   from?: Place | null;
   to?: Place | null;
   routeCoords?: [number, number][]; // [lat, lng]
+  pickMode?: boolean;
+  onPick?: (lat: number, lng: number) => void;
 };
 
 const ABUJA_CENTER: [number, number] = [9.0765, 7.4986];
 
-export function AbujaMap({ from, to, routeCoords }: Props) {
+export function AbujaMap({ from, to, routeCoords, pickMode, onPick }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const stateRef = useRef<{
     L?: typeof import("leaflet");
