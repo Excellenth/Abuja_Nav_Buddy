@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "NaijaNav Abuja — Find your way around the FCT" },
+      { name: "description", content: "A friendly guide for newcomers to Abuja, FCT. Search landmarks, markets, hospitals and transport with a live OpenStreetMap." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "NaijaNav Abuja — Find your way around the FCT" },
+      { property: "og:description", content: "A friendly guide for newcomers to Abuja, FCT. Search landmarks, markets, hospitals and transport with a live OpenStreetMap." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "NaijaNav Abuja — Find your way around the FCT" },
+      { name: "twitter:description", content: "A friendly guide for newcomers to Abuja, FCT. Search landmarks, markets, hospitals and transport with a live OpenStreetMap." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3b5dbb72-85d2-4117-ab93-1842bc723ac5/id-preview-3a715f4f--343a2127-e3b0-40d7-ba9c-f236c4ac1b45.lovable.app-1783720434497.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3b5dbb72-85d2-4117-ab93-1842bc723ac5/id-preview-3a715f4f--343a2127-e3b0-40d7-ba9c-f236c4ac1b45.lovable.app-1783720434497.png" },
     ],
     links: [
       {

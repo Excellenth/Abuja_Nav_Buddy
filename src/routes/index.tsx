@@ -19,7 +19,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Live map + newcomer tips to help you settle into Abuja, Nigeria's capital.",
+          "A friendly guide for newcomers to Abuja, FCT. Search landmarks, markets, hospitals and transport with a live OpenStreetMap.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
