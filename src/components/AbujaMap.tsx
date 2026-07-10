@@ -18,7 +18,13 @@ export function AbujaMap({ from, to, routeCoords, pickMode, onPick }: Props) {
     map?: import("leaflet").Map;
     markers: import("leaflet").Marker[];
     line?: import("leaflet").Polyline;
+    pickMode?: boolean;
+    onPick?: (lat: number, lng: number) => void;
   }>({ markers: [] });
+
+  // Keep latest pick handlers in the ref so map click reads current values
+  stateRef.current.pickMode = pickMode;
+  stateRef.current.onPick = onPick;
 
   // Init map on client only
   useEffect(() => {
