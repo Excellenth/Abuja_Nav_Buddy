@@ -75,10 +75,10 @@ function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-4">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
+        <div className="mx-auto grid max-w-3xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 sm:px-4 sm:py-4">
           <span
-            className="grid h-8 w-8 place-items-center rounded-lg text-primary-foreground"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-primary-foreground"
             style={{ background: "var(--gradient-hero)" }}
             aria-hidden
           >
@@ -87,15 +87,17 @@ function Home() {
               <circle cx="12" cy="9" r="2.5" />
             </svg>
           </span>
-          <h1 className="font-display text-lg font-extrabold tracking-tight">
+          <h1 className="min-w-0 truncate font-display text-base font-extrabold tracking-tight sm:text-lg">
             NaijaNav <span className="text-primary">Abuja</span>
           </h1>
-          <span className="ml-auto text-xs text-muted-foreground">FCT · Public transport</span>
+          <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs">
+            FCT
+          </span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-6 sm:py-10">
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-card)] sm:p-6">
+      <main className="mx-auto w-full max-w-3xl px-3 py-4 sm:px-4 sm:py-10">
+        <section className="rounded-2xl border border-border bg-card p-3 shadow-[var(--shadow-card)] sm:p-6">
           <div className="grid gap-4">
             <PlacePicker
               label="From"
