@@ -5,18 +5,26 @@ type Props = {
   from?: Place | null;
   to?: Place | null;
   routeCoords?: [number, number][]; // [lat, lng]
+  pickMode?: boolean;
+  onPick?: (lat: number, lng: number) => void;
 };
 
 const ABUJA_CENTER: [number, number] = [9.0765, 7.4986];
 
-export function AbujaMap({ from, to, routeCoords }: Props) {
+export function AbujaMap({ from, to, routeCoords, pickMode, onPick }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const stateRef = useRef<{
     L?: typeof import("leaflet");
     map?: import("leaflet").Map;
     markers: import("leaflet").Marker[];
     line?: import("leaflet").Polyline;
+    pickMode?: boolean;
+    onPick?: (lat: number, lng: number) => void;
   }>({ markers: [] });
+
+  // Keep latest pick handlers in the ref so map click reads current values
+  stateRef.current.pickMode = pickMode;
+  stateRef.current.onPick = onPick;
 
   // Init map on client only
   useEffect(() => {
@@ -37,6 +45,11 @@ export function AbujaMap({ from, to, routeCoords }: Props) {
       }).addTo(map);
       stateRef.current.L = L;
       stateRef.current.map = map;
+      map.on("click", (e: import("leaflet").LeafletMouseEvent) => {
+        if (stateRef.current.pickMode) {
+          stateRef.current.onPick?.(e.latlng.lat, e.latlng.lng);
+        }
+      });
       // Force paint after layout
       setTimeout(() => map.invalidateSize(), 50);
       renderOverlay();
