@@ -175,8 +175,10 @@ function Home() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <p className="font-semibold leading-snug">{s.label}</p>
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <p className="min-w-0 flex-1 text-sm font-semibold leading-snug sm:text-base">
+                        {s.label}
+                      </p>
                       <span className="shrink-0 text-sm font-semibold text-primary">
                         {s.priceNgn > 0 ? `₦${s.priceNgn.toLocaleString()}` : "Free"}
                       </span>
