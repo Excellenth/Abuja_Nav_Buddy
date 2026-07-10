@@ -209,7 +209,13 @@ function Home() {
 
       {/* Map picker modal */}
       {pickTarget && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-background h-dvh-safe"
+          style={{
+            paddingTop: "env(safe-area-inset-top)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
           <div className="flex items-center gap-3 border-b border-border px-4 py-3">
             <button
               onClick={() => setPickTarget(null)}
