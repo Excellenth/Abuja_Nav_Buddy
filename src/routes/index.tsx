@@ -258,14 +258,14 @@ function Metric({ label, value, emphasis }: { label: string; value: string; emph
   return (
     <div
       className={
-        "rounded-2xl border p-3 text-center " +
+        "min-w-0 rounded-2xl border p-2 text-center sm:p-3 " +
         (emphasis ? "border-primary bg-accent" : "border-border bg-card")
       }
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
-      <div className={"mt-0.5 font-display text-lg font-extrabold " + (emphasis ? "text-primary" : "")}>
+      <div className={"mt-0.5 truncate font-display text-base font-extrabold sm:text-lg " + (emphasis ? "text-primary" : "")}>
         {value}
       </div>
     </div>
