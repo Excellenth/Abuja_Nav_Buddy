@@ -39,6 +39,11 @@ export function AbujaMap({ from, to, routeCoords, pickMode, onPick }: Props) {
       }).addTo(map);
       stateRef.current.L = L;
       stateRef.current.map = map;
+      map.on("click", (e: import("leaflet").LeafletMouseEvent) => {
+        if (stateRef.current.pickMode) {
+          stateRef.current.onPick?.(e.latlng.lat, e.latlng.lng);
+        }
+      });
       // Force paint after layout
       setTimeout(() => map.invalidateSize(), 50);
       renderOverlay();
