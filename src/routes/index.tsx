@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState, type ReactNode } from "react";
 import { CATEGORIES, PLACES, type Category } from "@/data/abuja-places";
 
 const AbujaMap = lazy(() =>
@@ -317,7 +317,7 @@ function MapSkeleton() {
 }
 
 function CategoryIcon({ category }: { category: string }) {
-  const paths: Record<string, React.ReactNode> = {
+  const paths: Record<string, ReactNode> = {
     Landmark: <path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6" />,
     Transport: <><rect x="4" y="5" width="16" height="12" rx="2" /><path d="M4 13h16M8 17v2M16 17v2" /></>,
     Market: <><path d="M3 7h18l-2 5H5L3 7Z" /><path d="M5 12v8h14v-8" /></>,
