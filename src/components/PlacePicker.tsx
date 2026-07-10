@@ -226,7 +226,7 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
                   No matches. Try a different name.
                 </div>
               )}
-              <ul className="max-h-72 overflow-y-auto">
+              <ul className="max-h-64 overflow-y-auto overscroll-contain">
                 {suggestions.map((s) => (
                   <li key={s.id}>
                     <button
