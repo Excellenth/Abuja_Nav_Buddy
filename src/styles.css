@@ -88,13 +88,27 @@
 
 @layer base {
   * { border-color: var(--color-border); }
+  html, body {
+    /* Prevent iOS text auto-inflate & horizontal scroll on tiny screens */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    /* Respect iOS safe area */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
+  /* Inputs at 16px prevent iOS Safari zoom-on-focus */
+  input, select, textarea, button { font-size: 16px; }
 }
+
+/* Fullscreen pick-on-map modal uses dvh so mobile browser chrome doesn't cut it off */
+.h-dvh-safe { height: 100dvh; height: 100svh; min-height: 100vh; }
 
 /* Leaflet fix inside styled containers */
 .leaflet-container {
