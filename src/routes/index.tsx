@@ -4,6 +4,16 @@ import { type Place } from "@/data/abuja-places";
 import { planTrip, type Directions } from "@/lib/plan-trip";
 import { AbujaMap } from "@/components/AbujaMap";
 import { PlacePicker, reverseGeocode } from "@/components/PlacePicker";
+import {
+  addBookmark,
+  addToHistory,
+  getBookmarks,
+  getHistory,
+  isBookmarked,
+  removeBookmark,
+  removeHistory,
+  type SavedTrip,
+} from "@/lib/trip-storage";
 
 export const Route = createFileRoute("/")({
   head: () => ({
