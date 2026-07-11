@@ -54,7 +54,20 @@ function Home() {
   const [pickTarget, setPickTarget] = useState<PickTarget>(null);
   const [pickBusy, setPickBusy] = useState(false);
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [history, setHistory] = useState<SavedTrip[]>([]);
+  const [bookmarks, setBookmarks] = useState<SavedTrip[]>([]);
+  const [bookmarked, setBookmarked] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setHistory(getHistory());
+    setBookmarks(getBookmarks());
+  }, []);
+
+  useEffect(() => {
+    if (from && to) setBookmarked(isBookmarked(from.id, to.id));
+    else setBookmarked(false);
+  }, [from?.id, to?.id, bookmarks]);
 
   async function onGo() {
     if (!from || !to || from.id === to.id) return;
@@ -62,6 +75,13 @@ function Home() {
     try {
       const d = await planTrip(from, to);
       setDirections(d);
+      const updated = addToHistory({
+        from,
+        to,
+        totalKm: d.totalKm,
+        totalPriceNgn: d.totalPriceNgn,
+      });
+      setHistory(updated);
     } finally {
       setLoading(false);
     }
@@ -71,6 +91,37 @@ function Home() {
     setFrom(to);
     setTo(from);
     setDirections(null);
+  }
+
+  function loadTrip(t: SavedTrip) {
+    setFrom(t.from);
+    setTo(t.to);
+    setDirections(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function toggleBookmark() {
+    if (!from || !to || !directions) return;
+    if (isBookmarked(from.id, to.id)) {
+      removeBookmark(from.id, to.id);
+    } else {
+      addBookmark({
+        from,
+        to,
+        totalKm: directions.totalKm,
+        totalPriceNgn: directions.totalPriceNgn,
+      });
+    }
+    setBookmarks(getBookmarks());
+  }
+
+  function deleteHistoryItem(id: string) {
+    removeHistory(id);
+    setHistory(getHistory());
+  }
+  function deleteBookmark(t: SavedTrip) {
+    removeBookmark(t.from.id, t.to.id);
+    setBookmarks(getBookmarks());
   }
 
   async function handleMapPick(lat: number, lng: number) {
