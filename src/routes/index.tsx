@@ -429,3 +429,77 @@ function ModeIcon({ mode }: { mode: string }) {
     </svg>
   );
 }
+
+function TripList({
+  title,
+  icon,
+  items,
+  onOpen,
+  onRemove,
+}: {
+  title: string;
+  icon: "star" | "clock";
+  items: SavedTrip[];
+  onOpen: (t: SavedTrip) => void;
+  onRemove: (t: SavedTrip) => void;
+}) {
+  return (
+    <section>
+      <div className="mb-2 flex items-center gap-2 px-1">
+        <span className="grid h-6 w-6 place-items-center rounded-md bg-accent text-primary">
+          {icon === "star" ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          )}
+        </span>
+        <h3 className="font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </h3>
+        <span className="text-xs text-muted-foreground">({items.length})</span>
+      </div>
+      <ul className="space-y-2">
+        {items.map((t) => (
+          <li key={t.id}>
+            <div className="flex items-stretch gap-2 rounded-2xl border border-border bg-card p-3 sm:p-4">
+              <button
+                onClick={() => onOpen(t)}
+                className="min-w-0 flex-1 text-left"
+                aria-label={`Load trip from ${t.from.name} to ${t.to.name}`}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-primary" />
+                  <span className="truncate text-sm font-semibold">{t.from.name}</span>
+                </div>
+                <div className="my-1 ml-[3px] h-3 w-px bg-border" />
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: "#b23a48" }} />
+                  <span className="truncate text-sm font-semibold">{t.to.name}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                  <span>{t.totalKm.toFixed(1)} km</span>
+                  <span>·</span>
+                  <span className="font-semibold text-primary">₦{t.totalPriceNgn.toLocaleString()}</span>
+                </div>
+              </button>
+              <button
+                onClick={() => onRemove(t)}
+                className="shrink-0 self-start rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-destructive"
+                aria-label="Remove"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
