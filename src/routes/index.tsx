@@ -202,6 +202,26 @@ function Home() {
 
         {directions && from && to && (
           <section className="mt-6 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="min-w-0 truncate font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                Trip plan
+              </h2>
+              <button
+                onClick={toggleBookmark}
+                className={
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition " +
+                  (bookmarked
+                    ? "border-primary bg-accent text-primary"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground")
+                }
+                aria-pressed={bookmarked}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={bookmarked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z" />
+                </svg>
+                {bookmarked ? "Bookmarked" : "Bookmark"}
+              </button>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <Metric label="Distance" value={`${directions.totalKm.toFixed(1)} km`} />
               <Metric label="Time" value={`~${directions.estMinutes} min`} />
