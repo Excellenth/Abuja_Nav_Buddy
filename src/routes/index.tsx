@@ -280,9 +280,33 @@ function Home() {
         )}
 
         {!directions && (
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Type a location, use your current location, or pick on the map to get started.
-          </p>
+          <div className="mt-6 space-y-6">
+            {bookmarks.length === 0 && history.length === 0 && (
+              <p className="text-center text-sm text-muted-foreground">
+                Type a location, use your current location, or pick on the map to get started.
+              </p>
+            )}
+
+            {bookmarks.length > 0 && (
+              <TripList
+                title="Bookmarks"
+                icon="star"
+                items={bookmarks}
+                onOpen={loadTrip}
+                onRemove={deleteBookmark}
+              />
+            )}
+
+            {history.length > 0 && (
+              <TripList
+                title="Recent trips"
+                icon="clock"
+                items={history}
+                onOpen={loadTrip}
+                onRemove={(t) => deleteHistoryItem(t.id)}
+              />
+            )}
+          </div>
         )}
       </main>
 
