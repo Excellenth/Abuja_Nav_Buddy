@@ -9,9 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SavedOutingsRouteImport } from './routes/saved-outings'
+import { Route as DayPlannerRouteImport } from './routes/day-planner'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiSttRouteImport } from './routes/api/stt'
+import { Route as ApiPlanItineraryRouteImport } from './routes/api/plan-itinerary'
 
+const SavedOutingsRoute = SavedOutingsRouteImport.update({
+  id: '/saved-outings',
+  path: '/saved-outings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DayPlannerRoute = DayPlannerRouteImport.update({
+  id: '/day-planner',
+  path: '/day-planner',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -22,35 +35,74 @@ const ApiSttRoute = ApiSttRouteImport.update({
   path: '/api/stt',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlanItineraryRoute = ApiPlanItineraryRouteImport.update({
+  id: '/api/plan-itinerary',
+  path: '/api/plan-itinerary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/day-planner': typeof DayPlannerRoute
+  '/saved-outings': typeof SavedOutingsRoute
+  '/api/plan-itinerary': typeof ApiPlanItineraryRoute
   '/api/stt': typeof ApiSttRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/day-planner': typeof DayPlannerRoute
+  '/saved-outings': typeof SavedOutingsRoute
+  '/api/plan-itinerary': typeof ApiPlanItineraryRoute
   '/api/stt': typeof ApiSttRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/day-planner': typeof DayPlannerRoute
+  '/saved-outings': typeof SavedOutingsRoute
+  '/api/plan-itinerary': typeof ApiPlanItineraryRoute
   '/api/stt': typeof ApiSttRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/stt'
+  fullPaths:
+    '/' | '/day-planner' | '/saved-outings' | '/api/plan-itinerary' | '/api/stt'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/stt'
-  id: '__root__' | '/' | '/api/stt'
+  to:
+    '/' | '/day-planner' | '/saved-outings' | '/api/plan-itinerary' | '/api/stt'
+  id:
+    | '__root__'
+    | '/'
+    | '/day-planner'
+    | '/saved-outings'
+    | '/api/plan-itinerary'
+    | '/api/stt'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DayPlannerRoute: typeof DayPlannerRoute
+  SavedOutingsRoute: typeof SavedOutingsRoute
+  ApiPlanItineraryRoute: typeof ApiPlanItineraryRoute
   ApiSttRoute: typeof ApiSttRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/saved-outings': {
+      id: '/saved-outings'
+      path: '/saved-outings'
+      fullPath: '/saved-outings'
+      preLoaderRoute: typeof SavedOutingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/day-planner': {
+      id: '/day-planner'
+      path: '/day-planner'
+      fullPath: '/day-planner'
+      preLoaderRoute: typeof DayPlannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -65,13 +117,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSttRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/plan-itinerary': {
+      id: '/api/plan-itinerary'
+      path: '/api/plan-itinerary'
+      fullPath: '/api/plan-itinerary'
+      preLoaderRoute: typeof ApiPlanItineraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DayPlannerRoute: DayPlannerRoute,
+  SavedOutingsRoute: SavedOutingsRoute,
+  ApiPlanItineraryRoute: ApiPlanItineraryRoute,
   ApiSttRoute: ApiSttRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

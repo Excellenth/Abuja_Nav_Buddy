@@ -35,32 +35,30 @@
 
 :root {
   --radius: 0.875rem;
-  /* Nigeria green + clean white */
-  --background: oklch(0.99 0.005 150);
-  --foreground: oklch(0.18 0.03 155);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.03 155);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.03 155);
-  --primary: oklch(0.48 0.14 152);         /* Nigerian green */
-  --primary-foreground: oklch(0.99 0.005 150);
-  --primary-glow: oklch(0.68 0.18 148);
-  --secondary: oklch(0.96 0.02 150);
-  --secondary-foreground: oklch(0.22 0.05 155);
-  --muted: oklch(0.96 0.01 150);
-  --muted-foreground: oklch(0.48 0.02 155);
-  --accent: oklch(0.92 0.06 150);
-  --accent-foreground: oklch(0.25 0.08 155);
-  --destructive: oklch(0.6 0.22 27);
-  --destructive-foreground: oklch(0.99 0.005 150);
-  --border: oklch(0.92 0.01 150);
-  --input: oklch(0.94 0.01 150);
-  --ring: oklch(0.48 0.14 152);
+  /* Bold dark theme, high-saturation Nigerian green */
+  --background: oklch(0.12 0.02 155);
+  --foreground: oklch(0.97 0.01 150);
+  --card: oklch(0.17 0.028 155);
+  --card-foreground: oklch(0.97 0.01 150);
+  --popover: oklch(0.17 0.028 155);
+  --popover-foreground: oklch(0.97 0.01 150);
+  --primary: oklch(0.64 0.19 149);         /* bright, saturated Nigerian green */
+  --primary-foreground: oklch(0.1 0.02 155);
+  --primary-glow: oklch(0.76 0.2 148);
+  --secondary: oklch(0.23 0.03 155);
+  --secondary-foreground: oklch(0.97 0.01 150);
+  --muted: oklch(0.22 0.02 155);
+  --muted-foreground: oklch(0.7 0.02 150);
+  --accent: oklch(0.29 0.09 150);
+  --accent-foreground: oklch(0.96 0.02 150);
+  --destructive: oklch(0.63 0.23 27);
+  --destructive-foreground: oklch(0.98 0.005 150);
+  --border: oklch(0.34 0.03 155);
+  --input: oklch(0.25 0.02 155);
+  --ring: oklch(0.64 0.19 149);
 
-  --gradient-hero: linear-gradient(135deg, oklch(0.48 0.14 152) 0%, oklch(0.62 0.16 150) 60%, oklch(0.78 0.12 148) 100%);
-  --gradient-subtle: linear-gradient(180deg, oklch(0.99 0.005 150) 0%, oklch(0.96 0.02 150) 100%);
-  --shadow-elegant: 0 10px 40px -12px color-mix(in oklab, oklch(0.48 0.14 152) 30%, transparent);
-  --shadow-card: 0 4px 20px -8px color-mix(in oklab, oklch(0.18 0.03 155) 15%, transparent);
+  --shadow-elegant: 0 10px 40px -12px color-mix(in oklab, oklch(0.64 0.19 149) 40%, transparent);
+  --shadow-card: 0 4px 20px -8px color-mix(in oklab, black 45%, transparent);
 }
 
 .dark {

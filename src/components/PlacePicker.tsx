@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { PLACES, type Place } from "@/data/abuja-places";
+import { searchPlaces, reverseGeocode } from "@/lib/geocode";
 
 type Props = {
   label: string;
@@ -7,65 +8,12 @@ type Props = {
   onChange: (p: Place | null) => void;
   dotColor: string;
   onRequestMapPick: () => void;
+  voiceEnabled?: boolean;
 };
 
-// Abuja/FCT viewbox (west, south, east, north)
-const FCT_VIEWBOX = "6.9,9.4,7.75,8.6";
+export { reverseGeocode };
 
-async function geocode(q: string): Promise<Place[]> {
-  const url =
-    `https://nominatim.openstreetmap.org/search?format=json&limit=6&countrycodes=ng` +
-    `&viewbox=${FCT_VIEWBOX}&bounded=1&q=${encodeURIComponent(q)}`;
-  const res = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!res.ok) return [];
-  const json = (await res.json()) as Array<{
-    place_id: number;
-    display_name: string;
-    lat: string;
-    lon: string;
-    type?: string;
-    class?: string;
-  }>;
-  return json.map((r) => ({
-    id: `osm-${r.place_id}`,
-    name: r.display_name.split(",").slice(0, 2).join(",").trim(),
-    category: (r.type || r.class || "Place").replace(/_/g, " "),
-    lat: parseFloat(r.lat),
-    lng: parseFloat(r.lon),
-    description: r.display_name,
-  }));
-}
-
-export async function reverseGeocode(lat: number, lng: number): Promise<Place> {
-  try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
-    if (res.ok) {
-      const j = await res.json();
-      const shortName =
-        j.name ||
-        (j.display_name as string | undefined)?.split(",")[0]?.trim() ||
-        "Selected location";
-      return {
-        id: `rev-${lat.toFixed(5)}-${lng.toFixed(5)}`,
-        name: shortName,
-        category: "Selected",
-        lat,
-        lng,
-        description: j.display_name,
-      };
-    }
-  } catch {}
-  return {
-    id: `rev-${lat.toFixed(5)}-${lng.toFixed(5)}`,
-    name: `Pin ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-    category: "Selected",
-    lat,
-    lng,
-  };
-}
-
-export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick }: Props) {
+export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick, voiceEnabled = true }: Props) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Place[]>([]);
   const [open, setOpen] = useState(false);
@@ -100,16 +48,7 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
     }
     setLoading(true);
     debounceRef.current = window.setTimeout(async () => {
-      const curated = PLACES.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())).slice(0, 3);
-      const remote = await geocode(q);
-      const seen = new Set<string>();
-      const merged = [...curated, ...remote].filter((p) => {
-        const k = `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      });
-      setSuggestions(merged.slice(0, 8));
+      setSuggestions(await searchPlaces(q));
       setLoading(false);
     }, 300);
     return () => {
@@ -269,31 +208,36 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
               onFocus={() => setOpen(true)}
               placeholder={transcribing ? "Transcribing…" : "Search a place in Abuja…"}
               disabled={transcribing}
-              className="w-full rounded-xl border border-border bg-background py-3 pl-4 pr-12 text-base shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:opacity-70"
-            />
-            <button
-              type="button"
-              onClick={recording ? stopRecording : startRecording}
-              disabled={transcribing}
-              aria-label={recording ? "Stop recording" : "Search by voice"}
               className={
-                "absolute right-1.5 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-full transition " +
-                (recording
-                  ? "bg-destructive text-destructive-foreground animate-pulse"
-                  : "bg-accent text-primary hover:bg-primary hover:text-primary-foreground")
+                "w-full rounded-xl border border-border bg-background py-3 pl-4 text-base shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:opacity-70 " +
+                (voiceEnabled ? "pr-12" : "pr-4")
               }
-            >
-              {recording ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="6" y="6" width="12" height="12" rx="2" />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="3" width="6" height="12" rx="3" />
-                  <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-                </svg>
-              )}
-            </button>
+            />
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={recording ? stopRecording : startRecording}
+                disabled={transcribing}
+                aria-label={recording ? "Stop recording" : "Search by voice"}
+                className={
+                  "absolute right-1.5 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-full transition " +
+                  (recording
+                    ? "bg-destructive text-destructive-foreground animate-pulse"
+                    : "bg-accent text-primary hover:bg-primary hover:text-primary-foreground")
+                }
+              >
+                {recording ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="3" width="6" height="12" rx="3" />
+                    <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+                  </svg>
+                )}
+              </button>
+            )}
           </div>
 
           <div className="mt-2 flex flex-col gap-2 xs:flex-row sm:flex-row">

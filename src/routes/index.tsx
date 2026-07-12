@@ -1,34 +1,35 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { type Place } from "@/data/abuja-places";
 import { planMultiTrip, type Directions } from "@/lib/plan-trip";
 import { AbujaMap } from "@/components/AbujaMap";
-import { PlacePicker, reverseGeocode } from "@/components/PlacePicker";
-import {
-  addPlan,
-  addToHistory,
-  getHistory,
-  getPlans,
-  removeHistory,
-  removePlan,
-  updatePlan,
-  type SavedPlan,
-  type SavedTrip,
-} from "@/lib/trip-storage";
+import { PlacePicker } from "@/components/PlacePicker";
+import { TripSteps } from "@/components/TripResult";
+import { reverseGeocode } from "@/lib/geocode";
+import { addPlan, consumePendingStops, getDraft, setDraft, updatePlan } from "@/lib/trip-storage";
+
+const NAVIGATOR_DRAFT_KEY = "naijanav.navigatorDraft.v1";
+type NavigatorDraft = {
+  stops: (Place | null)[];
+  directions: Directions | null;
+  activePlanId: string | null;
+  rating: number;
+  comment: string;
+};
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "NaijaNav Abuja — Directions, fares & outings" },
+      { title: "Abuja NavBuddy — Directions, fares & outings" },
       {
         name: "description",
         content:
-          "Plan multi-stop trips across Abuja with step-by-step directions and public transport fares. Voice search, bookmarks, and outing planning.",
+          "Plan multi-stop trips across Abuja with step-by-step directions and public transport fares. Bookmarks and outing planning.",
       },
-      { property: "og:title", content: "NaijaNav Abuja — Directions, fares & outings" },
+      { property: "og:title", content: "Abuja NavBuddy — Directions, fares & outings" },
       {
         property: "og:description",
-        content: "Multi-stop Abuja trip planner with voice search and fare estimates.",
+        content: "Multi-stop Abuja trip planner with fare estimates.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -65,19 +66,38 @@ function Home() {
   const [pickTarget, setPickTarget] = useState<PickTarget>(null);
   const [pickBusy, setPickBusy] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [history, setHistory] = useState<SavedTrip[]>([]);
-  const [plans, setPlans] = useState<SavedPlan[]>([]);
 
   // For the current active plan (saved)
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setHistory(getHistory());
-    setPlans(getPlans());
+    const pending = consumePendingStops();
+    if (pending && pending.length >= 2) {
+      setStops(pending);
+      setDirections(null);
+      setActivePlanId(null);
+    } else {
+      const draft = getDraft<NavigatorDraft>(NAVIGATOR_DRAFT_KEY);
+      if (draft) {
+        setStops(draft.stops);
+        setDirections(draft.directions);
+        setActivePlanId(draft.activePlanId);
+        setRating(draft.rating);
+        setComment(draft.comment);
+      }
+    }
+    setHydrated(true);
   }, []);
+
+  // Keep in-progress state (stops, directions, rating) across tab switches within this session
+  useEffect(() => {
+    if (!hydrated) return;
+    setDraft<NavigatorDraft>(NAVIGATOR_DRAFT_KEY, { stops, directions, activePlanId, rating, comment });
+  }, [hydrated, stops, directions, activePlanId, rating, comment]);
 
   const filledStops = useMemo(() => stops.filter((s): s is Place => !!s), [stops]);
   const canGo = filledStops.length >= 2 && filledStops.length === stops.length;
@@ -118,16 +138,6 @@ function Home() {
     try {
       const d = await planMultiTrip(filledStops);
       setDirections(d);
-      // Only 2-stop trips go into the quick "recent" history
-      if (filledStops.length === 2) {
-        const updated = addToHistory({
-          from: filledStops[0],
-          to: filledStops[1],
-          totalKm: d.totalKm,
-          totalPriceNgn: d.totalPriceNgn,
-        });
-        setHistory(updated);
-      }
     } finally {
       setLoading(false);
     }
@@ -152,48 +162,20 @@ function Home() {
       rating: rating || undefined,
       comment: comment.trim() || undefined,
     });
-    setPlans(updated);
     setActivePlanId(updated[0].id);
   }
 
   function persistRating(next: number) {
     setRating(next);
     if (activePlanId) {
-      setPlans(updatePlan(activePlanId, { rating: next }));
+      updatePlan(activePlanId, { rating: next });
     }
   }
   function persistComment(next: string) {
     setComment(next);
     if (activePlanId) {
-      setPlans(updatePlan(activePlanId, { comment: next.trim() || undefined }));
+      updatePlan(activePlanId, { comment: next.trim() || undefined });
     }
-  }
-
-  function loadPlan(p: SavedPlan) {
-    setStops(p.stops);
-    setDirections(null);
-    setActivePlanId(p.id);
-    setRating(p.rating ?? 0);
-    setComment(p.comment ?? "");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-  function deletePlan(p: SavedPlan) {
-    const next = removePlan(p.id);
-    setPlans(next);
-    if (activePlanId === p.id) setActivePlanId(null);
-  }
-
-  function loadHistory(t: SavedTrip) {
-    setStops([t.from, t.to]);
-    setDirections(null);
-    setActivePlanId(null);
-    setRating(0);
-    setComment("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-  function deleteHistoryItem(id: string) {
-    removeHistory(id);
-    setHistory(getHistory());
   }
 
   async function handleMapPick(lat: number, lng: number) {
@@ -210,8 +192,7 @@ function Home() {
       <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto grid max-w-3xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 sm:px-4 sm:py-4">
           <span
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-primary-foreground"
-            style={{ background: "var(--gradient-hero)" }}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground"
             aria-hidden
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -219,11 +200,18 @@ function Home() {
             </svg>
           </span>
           <h1 className="min-w-0 truncate font-display text-base font-extrabold tracking-tight sm:text-lg">
-            NaijaNav <span className="text-primary">Abuja</span>
+            Abuja <span className="text-primary">NavBuddy</span>
           </h1>
-          <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs">
-            FCT
-          </span>
+          <Link
+            to="/saved-outings"
+            aria-label="Saved outings & history"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-primary"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </Link>
         </div>
       </header>
 
@@ -252,6 +240,7 @@ function Home() {
                   onChange={(p) => setStopAt(i, p)}
                   dotColor={stopColor(i, stops.length)}
                   onRequestMapPick={() => setPickTarget({ index: i })}
+                  voiceEnabled={false}
                 />
               </div>
             ))}
@@ -292,7 +281,7 @@ function Home() {
               </h2>
               <button
                 onClick={savePlan}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary bg-accent px-3 py-1.5 text-xs font-semibold text-primary transition hover:opacity-90"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary bg-card px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-accent/40"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z" />
@@ -301,66 +290,12 @@ function Home() {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <Metric label="Distance" value={`${directions.totalKm.toFixed(1)} km`} />
-              <Metric label="Time" value={`~${directions.estMinutes} min`} />
-              <Metric label="Fare" value={`₦${directions.totalPriceNgn.toLocaleString()}`} emphasis />
-            </div>
-
-            <div className="h-56 overflow-hidden rounded-2xl border border-border bg-muted sm:h-72">
-              {mounted && (
-                <AbujaMap
-                  from={filledStops[0]}
-                  to={filledStops[filledStops.length - 1]}
-                  routeCoords={directions.routeCoords}
-                />
-              )}
-            </div>
-
-            <ol className="space-y-2">
-              {directions.steps.map((s, i) => (
-                <li
-                  key={i}
-                  className={
-                    "flex items-start gap-3 rounded-2xl border border-border p-3 sm:p-4 " +
-                    (s.km === 0 && s.priceNgn === 0 && s.label.startsWith("Leg ")
-                      ? "bg-accent/40"
-                      : "bg-card")
-                  }
-                >
-                  {s.km === 0 && s.priceNgn === 0 && s.label.startsWith("Leg ") ? (
-                    <p className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wider text-primary">
-                      {s.label}
-                    </p>
-                  ) : (
-                    <>
-                      <div className="flex flex-col items-center">
-                        <div
-                          className="grid h-9 w-9 place-items-center rounded-full text-primary-foreground"
-                          style={{ background: "var(--gradient-hero)" }}
-                        >
-                          <ModeIcon mode={s.mode} />
-                        </div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                          <p className="min-w-0 flex-1 text-sm font-semibold leading-snug sm:text-base">
-                            {s.label}
-                          </p>
-                          <span className="shrink-0 text-sm font-semibold text-primary">
-                            {s.priceNgn > 0 ? `₦${s.priceNgn.toLocaleString()}` : "Free"}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm text-muted-foreground">{s.detail}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {s.km.toFixed(1)} km · {modeLabel(s.mode)}
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ol>
+            <TripSteps
+              directions={directions}
+              from={filledStops[0]}
+              to={filledStops[filledStops.length - 1]}
+              mounted={mounted}
+            />
 
             <div className="rounded-2xl border border-border bg-card p-3 sm:p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -407,33 +342,14 @@ function Home() {
                 </p>
               )}
             </div>
-
-            <p className="text-xs text-muted-foreground">
-              Fares are estimates. Always confirm with the driver before boarding.
-            </p>
           </section>
         )}
 
         {!directions && (
-          <div className="mt-6 space-y-6">
-            {plans.length === 0 && history.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground">
-                Type a place, tap the mic to speak, use your location, or pick on the map to get started.
-              </p>
-            )}
-
-            {plans.length > 0 && (
-              <PlanList items={plans} onOpen={loadPlan} onRemove={deletePlan} />
-            )}
-
-            {history.length > 0 && (
-              <HistoryList
-                items={history}
-                onOpen={loadHistory}
-                onRemove={(t) => deleteHistoryItem(t.id)}
-              />
-            )}
-          </div>
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Type a place, use your location, or pick on the map to get started.
+            Check the <b>Saved Outings</b> tab for your outings and recent trips.
+          </p>
         )}
       </main>
 
@@ -486,214 +402,5 @@ function Home() {
         </div>
       )}
     </div>
-  );
-}
-
-function Metric({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
-  return (
-    <div
-      className={
-        "min-w-0 rounded-2xl border p-2 text-center sm:p-3 " +
-        (emphasis ? "border-primary bg-accent" : "border-border bg-card")
-      }
-    >
-      <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
-      <div
-        className={
-          "mt-0.5 truncate font-display text-base font-extrabold sm:text-lg " +
-          (emphasis ? "text-primary" : "")
-        }
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function modeLabel(m: string) {
-  return (
-    {
-      walk: "Walking",
-      keke: "Keke NAPEP",
-      taxi: "Shared taxi",
-      bus: "Government bus",
-      metro: "Metro rail",
-    } as Record<string, string>
-  )[m] ?? m;
-}
-
-function ModeIcon({ mode }: { mode: string }) {
-  const common = {
-    width: 18,
-    height: 18,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 2,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-  };
-  if (mode === "walk")
-    return (
-      <svg {...common}>
-        <circle cx="13" cy="4" r="1.6" />
-        <path d="M10 21l2-7-3-3 2-5 3 2 3 1" />
-      </svg>
-    );
-  if (mode === "bus")
-    return (
-      <svg {...common}>
-        <rect x="4" y="5" width="16" height="12" rx="2" />
-        <path d="M4 13h16M8 17v2M16 17v2" />
-      </svg>
-    );
-  if (mode === "metro")
-    return (
-      <svg {...common}>
-        <rect x="5" y="3" width="14" height="16" rx="3" />
-        <path d="M5 14h14M9 22l3-3 3 3" />
-      </svg>
-    );
-  return (
-    <svg {...common}>
-      <path d="M4 17V11l3-5h10l3 5v6" />
-      <circle cx="8" cy="18" r="1.8" />
-      <circle cx="16" cy="18" r="1.8" />
-    </svg>
-  );
-}
-
-function PlanList({
-  items,
-  onOpen,
-  onRemove,
-}: {
-  items: SavedPlan[];
-  onOpen: (p: SavedPlan) => void;
-  onRemove: (p: SavedPlan) => void;
-}) {
-  return (
-    <section>
-      <div className="mb-2 flex items-center gap-2 px-1">
-        <span className="grid h-6 w-6 place-items-center rounded-md bg-accent text-primary">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z" />
-          </svg>
-        </span>
-        <h3 className="font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">
-          Saved outings
-        </h3>
-        <span className="text-xs text-muted-foreground">({items.length})</span>
-      </div>
-      <ul className="space-y-2">
-        {items.map((p) => (
-          <li key={p.id}>
-            <div className="flex items-stretch gap-2 rounded-2xl border border-border bg-card p-3 sm:p-4">
-              <button
-                type="button"
-                onClick={() => onOpen(p)}
-                className="min-w-0 flex-1 text-left"
-              >
-                <div className="flex min-w-0 items-center justify-between gap-2">
-                  <span className="truncate text-sm font-bold">{p.name}</span>
-                  {p.rating ? (
-                    <span className="shrink-0 text-xs font-semibold text-primary">
-                      {"★".repeat(p.rating)}
-                      <span className="text-muted-foreground">{"★".repeat(5 - p.rating)}</span>
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  {p.stops.map((s) => s.name).join(" → ")}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {p.stops.length} stops · {p.totalKm.toFixed(1)} km · ₦
-                  {p.totalPriceNgn.toLocaleString()}
-                </p>
-                {p.comment && (
-                  <p className="mt-1 line-clamp-2 text-xs italic text-muted-foreground">
-                    "{p.comment}"
-                  </p>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => onRemove(p)}
-                aria-label={`Remove ${p.name}`}
-                className="shrink-0 self-start rounded-full px-2 py-1 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              >
-                ✕
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function HistoryList({
-  items,
-  onOpen,
-  onRemove,
-}: {
-  items: SavedTrip[];
-  onOpen: (t: SavedTrip) => void;
-  onRemove: (t: SavedTrip) => void;
-}) {
-  return (
-    <section>
-      <div className="mb-2 flex items-center gap-2 px-1">
-        <span className="grid h-6 w-6 place-items-center rounded-md bg-accent text-primary">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 7v5l3 2" />
-          </svg>
-        </span>
-        <h3 className="font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">
-          Recent trips
-        </h3>
-        <span className="text-xs text-muted-foreground">({items.length})</span>
-      </div>
-      <ul className="space-y-2">
-        {items.map((t) => (
-          <li key={t.id}>
-            <div className="flex items-stretch gap-2 rounded-2xl border border-border bg-card p-3 sm:p-4">
-              <button
-                onClick={() => onOpen(t)}
-                className="min-w-0 flex-1 text-left"
-                aria-label={`Load trip from ${t.from.name} to ${t.to.name}`}
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-primary" />
-                  <span className="truncate text-sm font-semibold">{t.from.name}</span>
-                </div>
-                <div className="my-1 ml-[3px] h-3 w-px bg-border" />
-                <div className="flex min-w-0 items-center gap-2">
-                  <span
-                    className="inline-block h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: "#b23a48" }}
-                  />
-                  <span className="truncate text-sm font-semibold">{t.to.name}</span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t.totalKm.toFixed(1)} km · ₦{t.totalPriceNgn.toLocaleString()}
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => onRemove(t)}
-                aria-label="Remove"
-                className="shrink-0 self-start rounded-full px-2 py-1 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              >
-                ✕
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
