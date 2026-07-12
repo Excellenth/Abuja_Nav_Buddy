@@ -153,11 +153,16 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
       </div>
 
       {value ? (
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 shadow-sm">
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold">{value.name}</div>
+        <div className="flex w-full max-w-full items-center gap-2 overflow-hidden rounded-xl border border-border bg-background px-3 py-2.5 shadow-sm">
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="truncate text-sm font-semibold" title={value.name}>{value.name}</div>
             {value.description && value.description !== value.name && (
-              <div className="truncate text-xs text-muted-foreground">{value.description}</div>
+              <div
+                className="truncate text-xs text-muted-foreground"
+                title={value.description}
+              >
+                {value.description}
+              </div>
             )}
           </div>
           <button
