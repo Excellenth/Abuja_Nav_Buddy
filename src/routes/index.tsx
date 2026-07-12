@@ -4,6 +4,16 @@ import { type Place } from "@/data/abuja-places";
 import { planTrip, type Directions } from "@/lib/plan-trip";
 import { AbujaMap } from "@/components/AbujaMap";
 import { PlacePicker, reverseGeocode } from "@/components/PlacePicker";
+import {
+  addBookmark,
+  addToHistory,
+  getBookmarks,
+  getHistory,
+  isBookmarked,
+  removeBookmark,
+  removeHistory,
+  type SavedTrip,
+} from "@/lib/trip-storage";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -44,7 +54,20 @@ function Home() {
   const [pickTarget, setPickTarget] = useState<PickTarget>(null);
   const [pickBusy, setPickBusy] = useState(false);
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [history, setHistory] = useState<SavedTrip[]>([]);
+  const [bookmarks, setBookmarks] = useState<SavedTrip[]>([]);
+  const [bookmarked, setBookmarked] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setHistory(getHistory());
+    setBookmarks(getBookmarks());
+  }, []);
+
+  useEffect(() => {
+    if (from && to) setBookmarked(isBookmarked(from.id, to.id));
+    else setBookmarked(false);
+  }, [from?.id, to?.id, bookmarks]);
 
   async function onGo() {
     if (!from || !to || from.id === to.id) return;
@@ -52,6 +75,13 @@ function Home() {
     try {
       const d = await planTrip(from, to);
       setDirections(d);
+      const updated = addToHistory({
+        from,
+        to,
+        totalKm: d.totalKm,
+        totalPriceNgn: d.totalPriceNgn,
+      });
+      setHistory(updated);
     } finally {
       setLoading(false);
     }
@@ -61,6 +91,37 @@ function Home() {
     setFrom(to);
     setTo(from);
     setDirections(null);
+  }
+
+  function loadTrip(t: SavedTrip) {
+    setFrom(t.from);
+    setTo(t.to);
+    setDirections(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function toggleBookmark() {
+    if (!from || !to || !directions) return;
+    if (isBookmarked(from.id, to.id)) {
+      removeBookmark(from.id, to.id);
+    } else {
+      addBookmark({
+        from,
+        to,
+        totalKm: directions.totalKm,
+        totalPriceNgn: directions.totalPriceNgn,
+      });
+    }
+    setBookmarks(getBookmarks());
+  }
+
+  function deleteHistoryItem(id: string) {
+    removeHistory(id);
+    setHistory(getHistory());
+  }
+  function deleteBookmark(t: SavedTrip) {
+    removeBookmark(t.from.id, t.to.id);
+    setBookmarks(getBookmarks());
   }
 
   async function handleMapPick(lat: number, lng: number) {
@@ -141,6 +202,26 @@ function Home() {
 
         {directions && from && to && (
           <section className="mt-6 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="min-w-0 truncate font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                Trip plan
+              </h2>
+              <button
+                onClick={toggleBookmark}
+                className={
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition " +
+                  (bookmarked
+                    ? "border-primary bg-accent text-primary"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground")
+                }
+                aria-pressed={bookmarked}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={bookmarked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z" />
+                </svg>
+                {bookmarked ? "Bookmarked" : "Bookmark"}
+              </button>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <Metric label="Distance" value={`${directions.totalKm.toFixed(1)} km`} />
               <Metric label="Time" value={`~${directions.estMinutes} min`} />
@@ -199,9 +280,33 @@ function Home() {
         )}
 
         {!directions && (
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Type a location, use your current location, or pick on the map to get started.
-          </p>
+          <div className="mt-6 space-y-6">
+            {bookmarks.length === 0 && history.length === 0 && (
+              <p className="text-center text-sm text-muted-foreground">
+                Type a location, use your current location, or pick on the map to get started.
+              </p>
+            )}
+
+            {bookmarks.length > 0 && (
+              <TripList
+                title="Bookmarks"
+                icon="star"
+                items={bookmarks}
+                onOpen={loadTrip}
+                onRemove={deleteBookmark}
+              />
+            )}
+
+            {history.length > 0 && (
+              <TripList
+                title="Recent trips"
+                icon="clock"
+                items={history}
+                onOpen={loadTrip}
+                onRemove={(t) => deleteHistoryItem(t.id)}
+              />
+            )}
+          </div>
         )}
       </main>
 
@@ -322,5 +427,79 @@ function ModeIcon({ mode }: { mode: string }) {
       <circle cx="8" cy="18" r="1.8" />
       <circle cx="16" cy="18" r="1.8" />
     </svg>
+  );
+}
+
+function TripList({
+  title,
+  icon,
+  items,
+  onOpen,
+  onRemove,
+}: {
+  title: string;
+  icon: "star" | "clock";
+  items: SavedTrip[];
+  onOpen: (t: SavedTrip) => void;
+  onRemove: (t: SavedTrip) => void;
+}) {
+  return (
+    <section>
+      <div className="mb-2 flex items-center gap-2 px-1">
+        <span className="grid h-6 w-6 place-items-center rounded-md bg-accent text-primary">
+          {icon === "star" ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          )}
+        </span>
+        <h3 className="font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </h3>
+        <span className="text-xs text-muted-foreground">({items.length})</span>
+      </div>
+      <ul className="space-y-2">
+        {items.map((t) => (
+          <li key={t.id}>
+            <div className="flex items-stretch gap-2 rounded-2xl border border-border bg-card p-3 sm:p-4">
+              <button
+                onClick={() => onOpen(t)}
+                className="min-w-0 flex-1 text-left"
+                aria-label={`Load trip from ${t.from.name} to ${t.to.name}`}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-primary" />
+                  <span className="truncate text-sm font-semibold">{t.from.name}</span>
+                </div>
+                <div className="my-1 ml-[3px] h-3 w-px bg-border" />
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: "#b23a48" }} />
+                  <span className="truncate text-sm font-semibold">{t.to.name}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                  <span>{t.totalKm.toFixed(1)} km</span>
+                  <span>·</span>
+                  <span className="font-semibold text-primary">₦{t.totalPriceNgn.toLocaleString()}</span>
+                </div>
+              </button>
+              <button
+                onClick={() => onRemove(t)}
+                className="shrink-0 self-start rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-destructive"
+                aria-label="Remove"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

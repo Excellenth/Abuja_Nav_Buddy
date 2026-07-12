@@ -77,11 +77,15 @@ export function AbujaMap({ from, to, routeCoords, pickMode, onPick }: Props) {
     stateRef.current.line?.remove();
     stateRef.current.line = undefined;
 
+    const esc = (s: string) =>
+      s.replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string,
+      );
     const pin = (label: string, color: string) =>
       L.divIcon({
         className: "",
-        html: `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center">
-          <div style="background:${color};color:white;padding:4px 9px;border-radius:9999px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.2);border:2px solid white">${label}</div>
+        html: `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;pointer-events:none">
+          <div title="${esc(label)}" style="background:${color};color:white;padding:4px 9px;border-radius:9999px;font-size:11px;font-weight:700;box-shadow:0 4px 10px rgba(0,0,0,.2);border:2px solid white;max-width:min(60vw,220px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</div>
           <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid ${color};margin-top:-1px"></div>
         </div>`,
         iconSize: [0, 0],
