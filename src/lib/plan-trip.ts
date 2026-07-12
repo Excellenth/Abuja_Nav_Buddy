@@ -14,9 +14,9 @@ export type Directions = {
   totalPriceNgn: number;
   estMinutes: number;
   routeCoords: [number, number][]; // [lat, lng]
+  legs?: { fromName: string; toName: string; km: number; priceNgn: number }[];
 };
 
-// Haversine
 function distanceKm(a: [number, number], b: [number, number]) {
   const R = 6371;
   const toRad = (v: number) => (v * Math.PI) / 180;
@@ -28,17 +28,13 @@ function distanceKm(a: [number, number], b: [number, number]) {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-// Very simple Abuja fare model (approximate, in Naira)
 function keKePrice(km: number) {
-  // Keke NAPEP: ~₦150 base up to ~2km, +₦100/km after
   return Math.max(150, Math.round((150 + Math.max(0, km - 2) * 100) / 50) * 50);
 }
 function taxiSharedPrice(km: number) {
-  // Shared taxi: ~₦200 base, +₦120/km
   return Math.max(200, Math.round((200 + km * 120) / 50) * 50);
 }
 function busPrice(km: number) {
-  // El-Rufai/gov green bus flat-ish: ~₦100 base + ₦40/km
   return Math.max(100, Math.round((100 + km * 40) / 50) * 50);
 }
 
@@ -56,18 +52,9 @@ async function fetchOsrm(from: Place, to: Place): Promise<[number, number][] | n
   }
 }
 
-export async function planTrip(from: Place, to: Place): Promise<Directions> {
-  const routeCoords =
-    (await fetchOsrm(from, to)) ?? [
-      [from.lat, from.lng],
-      [to.lat, to.lng],
-    ];
-
-  const totalKm = distanceKm([from.lat, from.lng], [to.lat, to.lng]);
+function stepsFor(from: Place, to: Place, km: number): Step[] {
   const steps: Step[] = [];
-
-  // Short trip: single keke ride
-  if (totalKm <= 4) {
+  if (km <= 4) {
     steps.push({
       mode: "walk",
       label: `Walk to the roadside near ${from.name}`,
@@ -79,8 +66,8 @@ export async function planTrip(from: Place, to: Place): Promise<Directions> {
       mode: "keke",
       label: `Take a Keke NAPEP toward ${to.name}`,
       detail: `Tell the driver "${to.name}". Confirm the fare before entering.`,
-      km: totalKm,
-      priceNgn: keKePrice(totalKm),
+      km,
+      priceNgn: keKePrice(km),
     });
     steps.push({
       mode: "walk",
@@ -89,8 +76,7 @@ export async function planTrip(from: Place, to: Place): Promise<Directions> {
       km: 0.2,
       priceNgn: 0,
     });
-  } else if (totalKm <= 12) {
-    // Medium: shared taxi
+  } else if (km <= 12) {
     steps.push({
       mode: "walk",
       label: `Walk to the taxi stop near ${from.name}`,
@@ -102,18 +88,17 @@ export async function planTrip(from: Place, to: Place): Promise<Directions> {
       mode: "taxi",
       label: `Board a shared taxi toward the nearest hub`,
       detail: "Say your destination area (Wuse, Garki, Jabi, etc.). Pay per seat.",
-      km: totalKm * 0.7,
-      priceNgn: taxiSharedPrice(totalKm * 0.7),
+      km: km * 0.7,
+      priceNgn: taxiSharedPrice(km * 0.7),
     });
     steps.push({
       mode: "keke",
       label: `Switch to a Keke to ${to.name}`,
       detail: "From the hub, take a keke on the local route.",
-      km: totalKm * 0.3,
-      priceNgn: keKePrice(totalKm * 0.3),
+      km: km * 0.3,
+      priceNgn: keKePrice(km * 0.3),
     });
   } else {
-    // Long: government bus or intercity
     steps.push({
       mode: "walk",
       label: `Walk to the nearest bus stop from ${from.name}`,
@@ -125,21 +110,73 @@ export async function planTrip(from: Place, to: Place): Promise<Directions> {
       mode: "bus",
       label: `Take a green bus toward ${to.name}`,
       detail: "Buses are cheapest but slower. Board with cash — no cards.",
-      km: totalKm * 0.8,
-      priceNgn: busPrice(totalKm * 0.8),
+      km: km * 0.8,
+      priceNgn: busPrice(km * 0.8),
     });
     steps.push({
       mode: "keke",
       label: `Take a Keke for the last stretch to ${to.name}`,
       detail: "Final leg from the drop-off to your destination.",
-      km: totalKm * 0.2,
-      priceNgn: keKePrice(totalKm * 0.2),
+      km: km * 0.2,
+      priceNgn: keKePrice(km * 0.2),
     });
   }
+  return steps;
+}
 
-  const totalPriceNgn = steps.reduce((s, x) => s + x.priceNgn, 0);
-  // Rough time estimate: 22km/h average with stops
-  const estMinutes = Math.max(10, Math.round((totalKm / 22) * 60 + steps.length * 3));
+export async function planTrip(from: Place, to: Place): Promise<Directions> {
+  return planMultiTrip([from, to]);
+}
 
-  return { steps, totalKm, totalPriceNgn, estMinutes, routeCoords };
+export async function planMultiTrip(stops: Place[]): Promise<Directions> {
+  if (stops.length < 2) throw new Error("Need at least two stops");
+  const allSteps: Step[] = [];
+  const allCoords: [number, number][] = [];
+  const legs: NonNullable<Directions["legs"]> = [];
+  let totalKm = 0;
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = stops[i];
+    const b = stops[i + 1];
+    const coords =
+      (await fetchOsrm(a, b)) ?? [
+        [a.lat, a.lng],
+        [b.lat, b.lng],
+      ];
+    if (i === 0) allCoords.push(...coords);
+    else allCoords.push(...coords.slice(1));
+
+    const km = distanceKm([a.lat, a.lng], [b.lat, b.lng]);
+    totalKm += km;
+
+    const legSteps = stepsFor(a, b, km);
+    // Prefix leg steps with a header note when multi-stop
+    if (stops.length > 2) {
+      allSteps.push({
+        mode: "walk",
+        label: `Leg ${i + 1}: ${a.name} → ${b.name}`,
+        detail: "",
+        km: 0,
+        priceNgn: 0,
+      });
+    }
+    allSteps.push(...legSteps);
+    const legPrice = legSteps.reduce((s, x) => s + x.priceNgn, 0);
+    legs.push({ fromName: a.name, toName: b.name, km, priceNgn: legPrice });
+  }
+
+  const totalPriceNgn = allSteps.reduce((s, x) => s + x.priceNgn, 0);
+  const estMinutes = Math.max(
+    10,
+    Math.round((totalKm / 22) * 60 + allSteps.length * 3),
+  );
+
+  return {
+    steps: allSteps,
+    totalKm,
+    totalPriceNgn,
+    estMinutes,
+    routeCoords: allCoords,
+    legs,
+  };
 }
