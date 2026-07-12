@@ -78,8 +78,18 @@ function Home() {
     const pending = consumePendingStops();
     if (pending && pending.length >= 2) {
       setStops(pending);
-      setDirections(null);
       setActivePlanId(null);
+      const filled = pending.filter((s): s is Place => !!s);
+      if (filled.length >= 2 && filled.length === pending.length) {
+        // Opening a saved outing should show its directions right away,
+        // not require pressing "Get directions" again.
+        setLoading(true);
+        planMultiTrip(filled)
+          .then(setDirections)
+          .finally(() => setLoading(false));
+      } else {
+        setDirections(null);
+      }
     } else {
       const draft = getDraft<NavigatorDraft>(NAVIGATOR_DRAFT_KEY);
       if (draft) {
