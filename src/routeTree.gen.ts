@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SavedOutingsRouteImport } from './routes/saved-outings'
 import { Route as DayPlannerRouteImport } from './routes/day-planner'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiSttRouteImport } from './routes/api/stt'
 import { Route as ApiPlanItineraryRouteImport } from './routes/api/plan-itinerary'
 
 const SavedOutingsRoute = SavedOutingsRouteImport.update({
@@ -30,11 +29,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSttRoute = ApiSttRouteImport.update({
-  id: '/api/stt',
-  path: '/api/stt',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPlanItineraryRoute = ApiPlanItineraryRouteImport.update({
   id: '/api/plan-itinerary',
   path: '/api/plan-itinerary',
@@ -46,14 +40,12 @@ export interface FileRoutesByFullPath {
   '/day-planner': typeof DayPlannerRoute
   '/saved-outings': typeof SavedOutingsRoute
   '/api/plan-itinerary': typeof ApiPlanItineraryRoute
-  '/api/stt': typeof ApiSttRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/day-planner': typeof DayPlannerRoute
   '/saved-outings': typeof SavedOutingsRoute
   '/api/plan-itinerary': typeof ApiPlanItineraryRoute
-  '/api/stt': typeof ApiSttRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,22 +53,14 @@ export interface FileRoutesById {
   '/day-planner': typeof DayPlannerRoute
   '/saved-outings': typeof SavedOutingsRoute
   '/api/plan-itinerary': typeof ApiPlanItineraryRoute
-  '/api/stt': typeof ApiSttRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    '/' | '/day-planner' | '/saved-outings' | '/api/plan-itinerary' | '/api/stt'
+  fullPaths: '/' | '/day-planner' | '/saved-outings' | '/api/plan-itinerary'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    '/' | '/day-planner' | '/saved-outings' | '/api/plan-itinerary' | '/api/stt'
+  to: '/' | '/day-planner' | '/saved-outings' | '/api/plan-itinerary'
   id:
-    | '__root__'
-    | '/'
-    | '/day-planner'
-    | '/saved-outings'
-    | '/api/plan-itinerary'
-    | '/api/stt'
+    '__root__' | '/' | '/day-planner' | '/saved-outings' | '/api/plan-itinerary'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -84,7 +68,6 @@ export interface RootRouteChildren {
   DayPlannerRoute: typeof DayPlannerRoute
   SavedOutingsRoute: typeof SavedOutingsRoute
   ApiPlanItineraryRoute: typeof ApiPlanItineraryRoute
-  ApiSttRoute: typeof ApiSttRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -110,13 +93,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/stt': {
-      id: '/api/stt'
-      path: '/api/stt'
-      fullPath: '/api/stt'
-      preLoaderRoute: typeof ApiSttRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/plan-itinerary': {
       id: '/api/plan-itinerary'
       path: '/api/plan-itinerary'
@@ -132,7 +108,6 @@ const rootRouteChildren: RootRouteChildren = {
   DayPlannerRoute: DayPlannerRoute,
   SavedOutingsRoute: SavedOutingsRoute,
   ApiPlanItineraryRoute: ApiPlanItineraryRoute,
-  ApiSttRoute: ApiSttRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

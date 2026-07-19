@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { PLACES, type Place } from "@/data/abuja-places";
+import { type Place } from "@/data/abuja-places";
 import { searchPlaces, reverseGeocode } from "@/lib/geocode";
 
 type Props = {
@@ -9,24 +9,35 @@ type Props = {
   dotColor: string;
   onRequestMapPick: () => void;
   voiceEnabled?: boolean;
+  // Called with a raw resolved place (search pick or GPS) before it's
+  // committed via onChange -- lets the caller run it through the
+  // nearest-stop confirmation picker first. If omitted, the raw place is
+  // used as-is.
+  onResolve?: (raw: Place) => Promise<Place>;
 };
 
 export { reverseGeocode };
 
-export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick, voiceEnabled = true }: Props) {
+export function PlacePicker({
+  label,
+  value,
+  onChange,
+  dotColor,
+  onRequestMapPick,
+  voiceEnabled = true,
+  onResolve,
+}: Props) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Place[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [transcribing, setTranscribing] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<number | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const recRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
+  const recRef = useRef<any>(null);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -37,12 +48,15 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
   }, []);
 
   useEffect(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    setVoiceSupported(!!SR);
+  }, []);
+
+  useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     const q = query.trim();
     if (q.length < 2) {
-      setSuggestions(
-        PLACES.filter((p) => (q ? p.name.toLowerCase().includes(q.toLowerCase()) : true)).slice(0, 8),
-      );
+      setSuggestions([]);
       setLoading(false);
       return;
     }
@@ -56,11 +70,12 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
     };
   }, [query]);
 
-  function pick(p: Place) {
-    onChange(p);
+  async function pick(p: Place) {
     setQuery("");
     setOpen(false);
     setError(null);
+    const resolved = onResolve ? await onResolve(p) : p;
+    onChange(resolved);
   }
 
   function useCurrent() {
@@ -73,7 +88,7 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const p = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-        pick({ ...p, name: p.name === "Selected location" ? "My current location" : p.name });
+        await pick({ ...p, name: p.name === "Selected location" ? "My current location" : p.name });
         setLocating(false);
       },
       (err) => {
@@ -88,75 +103,41 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
     );
   }
 
-  async function startRecording() {
-    setError(null);
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+  function toggleVoice() {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
       setError("Voice search isn't supported on this browser.");
       return;
     }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const mimeCandidates = ["audio/webm", "audio/mp4", "audio/ogg"];
-      const mimeType = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m));
-      const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      chunksRef.current = [];
-      rec.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      rec.onstop = async () => {
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-        const type = rec.mimeType || "audio/webm";
-        const blob = new Blob(chunksRef.current, { type });
-        chunksRef.current = [];
-        if (blob.size < 1500) {
-          setError("Recording was empty — please try again.");
-          setTranscribing(false);
-          return;
-        }
-        setTranscribing(true);
-        try {
-          const fd = new FormData();
-          fd.append("file", blob, `voice.${type.includes("mp4") ? "mp4" : type.includes("ogg") ? "ogg" : "webm"}`);
-          const res = await fetch("/api/stt", { method: "POST", body: fd });
-          const json = await res.json().catch(() => null);
-          if (!res.ok) {
-            setError(json?.error || "Couldn't transcribe your voice.");
-          } else {
-            const text = (json?.text as string | undefined)?.trim();
-            if (text) {
-              setQuery(text);
-              setOpen(true);
-            } else {
-              setError("Didn't catch that — try again.");
-            }
-          }
-        } catch {
-          setError("Network error during voice search.");
-        } finally {
-          setTranscribing(false);
-        }
-      };
-      rec.start();
-      recRef.current = rec;
-      setRecording(true);
-    } catch {
-      setError("Microphone permission denied.");
+    if (recording) {
+      recRef.current?.stop();
+      return;
     }
-  }
-
-  function stopRecording() {
-    if (recRef.current && recRef.current.state !== "inactive") {
-      recRef.current.stop();
-    }
-    recRef.current = null;
-    setRecording(false);
+    setError(null);
+    const rec = new SR();
+    rec.lang = "en-NG";
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.onresult = (e: any) => {
+      const text = e.results?.[0]?.[0]?.transcript?.trim();
+      if (text) {
+        setQuery(text);
+        setOpen(true);
+      }
+    };
+    rec.onerror = (e: any) => {
+      setRecording(false);
+      setError(e.error === "not-allowed" ? "Microphone permission denied." : "Didn't catch that — try again.");
+    };
+    rec.onend = () => setRecording(false);
+    rec.start();
+    recRef.current = rec;
+    setRecording(true);
   }
 
   useEffect(() => {
     return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
+      recRef.current?.stop?.();
     };
   }, []);
 
@@ -206,18 +187,16 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
                 setOpen(true);
               }}
               onFocus={() => setOpen(true)}
-              placeholder={transcribing ? "Transcribing…" : "Search a place in Abuja…"}
-              disabled={transcribing}
+              placeholder="Search a place in Abuja…"
               className={
                 "w-full rounded-xl border border-border bg-background py-3 pl-4 text-base shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:opacity-70 " +
-                (voiceEnabled ? "pr-12" : "pr-4")
+                (voiceEnabled && voiceSupported ? "pr-12" : "pr-4")
               }
             />
-            {voiceEnabled && (
+            {voiceEnabled && voiceSupported && (
               <button
                 type="button"
-                onClick={recording ? stopRecording : startRecording}
-                disabled={transcribing}
+                onClick={toggleVoice}
                 aria-label={recording ? "Stop recording" : "Search by voice"}
                 className={
                   "absolute right-1.5 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-full transition " +
@@ -267,16 +246,19 @@ export function PlacePicker({ label, value, onChange, dotColor, onRequestMapPick
           </div>
 
           {recording && (
-            <p className="mt-2 text-xs font-medium text-destructive">Recording… tap the square to stop.</p>
+            <p className="mt-2 text-xs font-medium text-destructive">Listening… tap the square to stop.</p>
           )}
           {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
 
-          {open && !recording && !transcribing && (
+          {open && !recording && (
             <div className="absolute z-30 mt-2 w-full max-w-full overflow-hidden rounded-2xl border border-border bg-popover shadow-lg">
               {loading && (
                 <div className="px-4 py-3 text-xs text-muted-foreground">Searching…</div>
               )}
-              {!loading && suggestions.length === 0 && (
+              {!loading && query.trim().length < 2 && (
+                <div className="px-4 py-3 text-xs text-muted-foreground">Type at least 2 characters to search.</div>
+              )}
+              {!loading && query.trim().length >= 2 && suggestions.length === 0 && (
                 <div className="px-4 py-3 text-xs text-muted-foreground">
                   No matches. Try a different name.
                 </div>

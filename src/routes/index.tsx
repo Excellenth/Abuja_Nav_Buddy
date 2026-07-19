@@ -6,6 +6,7 @@ import { AbujaMap } from "@/components/AbujaMap";
 import { PlacePicker } from "@/components/PlacePicker";
 import { TripSteps } from "@/components/TripResult";
 import { reverseGeocode } from "@/lib/geocode";
+import { useNearestStopConfirm } from "@/hooks/use-nearest-stop-confirm";
 import { addPlan, consumePendingStops, getDraft, setDraft, updatePlan } from "@/lib/trip-storage";
 
 const NAVIGATOR_DRAFT_KEY = "naijanav.navigatorDraft.v1";
@@ -66,6 +67,7 @@ function Home() {
   const [pickTarget, setPickTarget] = useState<PickTarget>(null);
   const [pickBusy, setPickBusy] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { confirm, dialog: nearestStopDialog } = useNearestStopConfirm();
 
   // For the current active plan (saved)
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
@@ -166,9 +168,9 @@ function Home() {
     const updated = addPlan({
       name,
       stops: filledStops,
-      totalKm: directions.totalKm,
-      totalPriceNgn: directions.totalPriceNgn,
-      estMinutes: directions.estMinutes,
+      totalFareNgn: directions.totalFareNgn,
+      totalTimeMin: directions.totalTimeMin,
+      legCount: directions.legCount,
       rating: rating || undefined,
       comment: comment.trim() || undefined,
     });
@@ -191,7 +193,8 @@ function Home() {
   async function handleMapPick(lat: number, lng: number) {
     if (!pickTarget || pickBusy) return;
     setPickBusy(true);
-    const place = await reverseGeocode(lat, lng);
+    const raw = await reverseGeocode(lat, lng);
+    const place = await confirm(raw);
     setStopAt(pickTarget.index, place);
     setPickTarget(null);
     setPickBusy(false);
@@ -250,6 +253,7 @@ function Home() {
                   onChange={(p) => setStopAt(i, p)}
                   dotColor={stopColor(i, stops.length)}
                   onRequestMapPick={() => setPickTarget({ index: i })}
+                  onResolve={confirm}
                   voiceEnabled={false}
                 />
               </div>
@@ -364,7 +368,7 @@ function Home() {
       </main>
 
       <footer className="mx-auto max-w-3xl px-4 py-8 text-center text-xs text-muted-foreground">
-        Map data © OpenStreetMap · Search © Nominatim · Routing © OSRM
+        Map data © OpenStreetMap · Search © Nominatim · Routing from real field surveys
       </footer>
 
       {pickTarget && (
@@ -411,6 +415,7 @@ function Home() {
           </div>
         </div>
       )}
+      {nearestStopDialog}
     </div>
   );
 }

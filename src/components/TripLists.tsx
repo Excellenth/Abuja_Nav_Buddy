@@ -44,8 +44,8 @@ export function PlanList({
                   {p.stops.map((s) => s.name).join(" → ")}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {p.stops.length} stops · {p.totalKm.toFixed(1)} km · ₦
-                  {p.totalPriceNgn.toLocaleString()}
+                  {p.stops.length} stops · ~{Math.round(p.totalTimeMin)} min ·{" "}
+                  {p.totalFareNgn != null ? `₦${p.totalFareNgn.toLocaleString()}` : "fare not fully known"}
                 </p>
                 {p.comment && (
                   <p className="mt-1 line-clamp-2 text-xs italic text-muted-foreground">

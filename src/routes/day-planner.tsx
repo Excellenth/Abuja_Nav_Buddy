@@ -7,6 +7,7 @@ import { TripSteps } from "@/components/TripResult";
 import { geocodeOne, reverseGeocode } from "@/lib/geocode";
 import { parseItinerary } from "@/lib/parse-itinerary";
 import { planMultiTrip, type Directions } from "@/lib/plan-trip";
+import { useNearestStopConfirm } from "@/hooks/use-nearest-stop-confirm";
 import { addPlan, getDraft, getHomePlace, setDraft, setHomePlace, setPendingStops } from "@/lib/trip-storage";
 
 export const Route = createFileRoute("/day-planner")({
@@ -48,6 +49,7 @@ function DayPlannerPage() {
   const [savedName, setSavedName] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const recRef = useRef<any>(null);
+  const { confirm, dialog: nearestStopDialog } = useNearestStopConfirm();
 
   useEffect(() => {
     setMounted(true);
@@ -152,7 +154,8 @@ function DayPlannerPage() {
   async function handleMapPick(lat: number, lng: number) {
     if (pickIndex === null || pickBusy) return;
     setPickBusy(true);
-    const place = await reverseGeocode(lat, lng);
+    const raw = await reverseGeocode(lat, lng);
+    const place = await confirm(raw);
     setStopPlace(pickIndex, place);
     setPickIndex(null);
     setPickBusy(false);
@@ -182,9 +185,9 @@ function DayPlannerPage() {
       addPlan({
         name,
         stops: filledPlaces,
-        totalKm: d.totalKm,
-        totalPriceNgn: d.totalPriceNgn,
-        estMinutes: d.estMinutes,
+        totalFareNgn: d.totalFareNgn,
+        totalTimeMin: d.totalTimeMin,
+        legCount: d.legCount,
       });
       setSavedName(name);
     } catch (e) {
@@ -304,6 +307,7 @@ function DayPlannerPage() {
                     onChange={(p) => setStopPlace(i, p)}
                     dotColor={stopColor(i, stops.length)}
                     onRequestMapPick={() => setPickIndex(i)}
+                    onResolve={confirm}
                   />
                   {s.isHome && s.place && (
                     <button
@@ -390,6 +394,7 @@ function DayPlannerPage() {
           </div>
         </div>
       )}
+      {nearestStopDialog}
     </div>
   );
 }

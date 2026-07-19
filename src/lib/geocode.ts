@@ -1,57 +1,34 @@
-import { PLACES, type Place } from "@/data/abuja-places";
+import type { Place } from "@/data/abuja-places";
+import { searchKnownStops } from "@/lib/backend-api";
 
 // Abuja/FCT viewbox (west, south, east, north)
 const FCT_VIEWBOX = "6.9,9.4,7.75,8.6";
 
+function knownStopToPlace(s: Awaited<ReturnType<typeof searchKnownStops>>[number]): Place {
+  return {
+    id: `stop-${s.node_id}`,
+    name: s.name,
+    category: "Bus stop",
+    lat: s.lat,
+    lng: s.lng,
+    description: s.landmark_description ?? undefined,
+    nodeId: s.node_id,
+  };
+}
+
 /**
- * Fuzzy match score for typeahead search — lower is better, null means no match.
- * Exact substrings rank best (by position); everything else falls back to an
- * in-order subsequence match (like a fuzzy file-finder) so small typos and
- * skipped letters ("mtama" -> "Maitama") still surface a suggestion.
+ * Known, already-mapped stops (your own field data/OSM-contributed points)
+ * first, then live Nominatim results -- Nominatim has never heard of an
+ * informal stop name like "Galadimawa Bridge", so without this a commuter
+ * could never find it by typing its name.
  */
-function fuzzyScore(query: string, target: string): number | null {
-  const q = query.toLowerCase().trim();
-  const t = target.toLowerCase();
-  if (!q) return 0;
-  const idx = t.indexOf(q);
-  if (idx !== -1) return idx;
-
-  let qi = 0;
-  let score = 0;
-  let lastMatch = -1;
-  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
-    if (t[ti] === q[qi]) {
-      if (lastMatch >= 0) score += ti - lastMatch - 1; // penalize gaps between matched letters
-      lastMatch = ti;
-      qi++;
-    }
-  }
-  if (qi < q.length) return null; // not every query letter appeared in order
-  return 1000 + score; // subsequence matches always rank behind substring matches
-}
-
-function fuzzySearchCurated(q: string, limit: number): Place[] {
-  return PLACES.map((p) => ({ p, score: fuzzyScore(q, p.name) }))
-    .filter((x): x is { p: Place; score: number } => x.score !== null)
-    .sort((a, b) => a.score - b.score)
-    .slice(0, limit)
-    .map((x) => x.p);
-}
-
 export async function searchPlaces(q: string): Promise<Place[]> {
   const trimmed = q.trim();
-  if (trimmed.length < 2) {
-    return trimmed ? fuzzySearchCurated(trimmed, 8) : PLACES.slice(0, 8);
-  }
-  const curated = fuzzySearchCurated(trimmed, 3);
-  const remote = await geocode(trimmed);
-  const seen = new Set<string>();
-  const merged = [...curated, ...remote].filter((p) => {
-    const k = `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
+  if (trimmed.length < 2) return [];
+  const [known, remote] = await Promise.all([searchKnownStops(trimmed), geocode(trimmed)]);
+  const knownPlaces = known.map(knownStopToPlace);
+  const seen = new Set(knownPlaces.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`));
+  const merged = [...knownPlaces, ...remote.filter((p) => !seen.has(`${p.lat.toFixed(4)},${p.lng.toFixed(4)}`))];
   return merged.slice(0, 8);
 }
 

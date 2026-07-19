@@ -1,5 +1,5 @@
 import { type Place } from "@/data/abuja-places";
-import { type Directions } from "@/lib/plan-trip";
+import { type Directions, modeLabel } from "@/lib/plan-trip";
 import { AbujaMap } from "@/components/AbujaMap";
 
 export function Metric({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
@@ -25,18 +25,6 @@ export function Metric({ label, value, emphasis }: { label: string; value: strin
   );
 }
 
-export function modeLabel(m: string) {
-  return (
-    {
-      walk: "Walking",
-      keke: "Keke NAPEP",
-      taxi: "Shared taxi",
-      bus: "Government bus",
-      metro: "Metro rail",
-    } as Record<string, string>
-  )[m] ?? m;
-}
-
 export function ModeIcon({ mode }: { mode: string }) {
   const common = {
     width: 18,
@@ -55,20 +43,22 @@ export function ModeIcon({ mode }: { mode: string }) {
         <path d="M10 21l2-7-3-3 2-5 3 2 3 1" />
       </svg>
     );
-  if (mode === "bus")
+  if (mode === "okada")
+    return (
+      <svg {...common}>
+        <circle cx="6" cy="18" r="2.5" />
+        <circle cx="18" cy="18" r="2.5" />
+        <path d="M6 18h5l2-6h4M11 12l3-4h3" />
+      </svg>
+    );
+  if (mode === "minibus")
     return (
       <svg {...common}>
         <rect x="4" y="5" width="16" height="12" rx="2" />
         <path d="M4 13h16M8 17v2M16 17v2" />
       </svg>
     );
-  if (mode === "metro")
-    return (
-      <svg {...common}>
-        <rect x="5" y="3" width="14" height="16" rx="3" />
-        <path d="M5 14h14M9 22l3-3 3 3" />
-      </svg>
-    );
+  // keke_napep, shared_taxi
   return (
     <svg {...common}>
       <path d="M4 17V11l3-5h10l3 5v6" />
@@ -90,12 +80,31 @@ export function TripSteps({
   to: Place;
   mounted: boolean;
 }) {
+  const isDivider = (label: string) => label.startsWith("Leg ");
+  const isGap = (label: string) => label.startsWith("No known route yet");
+
   return (
     <div className="space-y-4">
+      {directions.notFoundLegs.length > 0 && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+          No known route yet for: {directions.notFoundLegs.join(", ")}. Try a different nearby stop for that leg.
+        </div>
+      )}
+      {directions.includesEstimatedLegs && (
+        <div className="rounded-2xl border border-accent bg-accent/40 p-3 text-xs text-muted-foreground">
+          This route includes at least one <b>estimated</b> leg — not yet field-verified, so its time/fare may be
+          off. Confirm with the driver before boarding.
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-2">
-        <Metric label="Distance" value={`${directions.totalKm.toFixed(1)} km`} />
-        <Metric label="Time" value={`~${directions.estMinutes} min`} />
-        <Metric label="Fare" value={`₦${directions.totalPriceNgn.toLocaleString()}`} emphasis />
+        <Metric label="Time" value={`~${Math.round(directions.totalTimeMin)} min`} />
+        <Metric
+          label="Fare"
+          value={directions.totalFareNgn != null ? `₦${directions.totalFareNgn.toLocaleString()}` : "Not fully known"}
+          emphasis
+        />
+        <Metric label="Legs" value={String(directions.legCount)} />
       </div>
 
       <div className="h-56 overflow-hidden rounded-2xl border border-border bg-muted sm:h-72">
@@ -108,13 +117,18 @@ export function TripSteps({
             key={i}
             className={
               "flex items-start gap-3 rounded-2xl border border-border p-3 sm:p-4 " +
-              (s.km === 0 && s.priceNgn === 0 && s.label.startsWith("Leg ") ? "bg-accent/40" : "bg-card")
+              (isDivider(s.label) || isGap(s.label) ? "bg-accent/40" : "bg-card")
             }
           >
-            {s.km === 0 && s.priceNgn === 0 && s.label.startsWith("Leg ") ? (
+            {isDivider(s.label) ? (
               <p className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wider text-primary">
                 {s.label}
               </p>
+            ) : isGap(s.label) ? (
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-destructive">{s.label}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{s.detail}</p>
+              </div>
             ) : (
               <>
                 <div className="flex flex-col items-center">
@@ -126,12 +140,16 @@ export function TripSteps({
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                     <p className="min-w-0 flex-1 text-sm font-semibold leading-snug sm:text-base">{s.label}</p>
                     <span className="shrink-0 text-sm font-semibold text-primary">
-                      {s.priceNgn > 0 ? `₦${s.priceNgn.toLocaleString()}` : "Free"}
+                      {s.fareNgn ? `₦${s.fareNgn.toLocaleString()}` : s.fareNgn === 0 ? "Free" : "Fare unknown"}
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{s.detail}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {s.km.toFixed(1)} km · {modeLabel(s.mode)}
+                    {s.timeMin != null
+                      ? `~${Math.round(s.timeMin)} min · ${modeLabel(s.mode)}`
+                      : s.distanceM != null
+                        ? `${Math.round(s.distanceM)} m · ${modeLabel(s.mode)}`
+                        : modeLabel(s.mode)}
                   </p>
                 </div>
               </>
@@ -141,7 +159,8 @@ export function TripSteps({
       </ol>
 
       <p className="text-xs text-muted-foreground">
-        Fares are estimates. Always confirm with the driver before boarding.
+        Fares and times come from real field surveys where available. Always confirm with the driver before
+        boarding.
       </p>
     </div>
   );
