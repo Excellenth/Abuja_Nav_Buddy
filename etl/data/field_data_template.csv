@@ -1,0 +1,5 @@
+trip_date,from_name,from_type,from_lat,from_lng,to_name,to_type,to_lat,to_lng,mode,fare_ngn,wait_time_min,travel_time_min,reliability_1to5,direction,notes
+2026-07-10,Galadimawa Bridge,loading_point,9.0123,7.4321,Apo Bridge,transfer_point,9.0056,7.4489,shared_taxi,300,8,20,4,one_way,morning rush hour; taxi park is on the east side of the bridge
+2026-07-10,Apo Bridge,transfer_point,9.0056,7.4489,OSGOF,loading_point,8.9998,7.4602,okada,600,3,8,4,one_way,okada stage is just past the transfer point; no luggage room
+2026-07-10,Galadimawa Bridge,loading_point,9.0123,7.4321,Mararaba,transfer_point,9.0611,7.5205,shared_taxi,700,12,35,3,one_way,DIRECT service -- passenger stays in the same cab through Apo Bridge, no alighting; log this as its own edge, separate from the Galadimawa->Apo Bridge leg above
+2026-07-10,Apo Bridge,transfer_point,9.0056,7.4489,Mararaba,transfer_point,9.0611,7.5205,shared_taxi,300,5,20,4,one_way,the transfer alternative to the direct row above -- exists so the router can genuinely compare the two options

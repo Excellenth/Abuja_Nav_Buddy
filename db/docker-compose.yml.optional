@@ -1,0 +1,26 @@
+# Local dev database: PostgreSQL + PostGIS + pgRouting bundled together,
+# so there's no separate extension install to fight with on Windows.
+#
+# First run automatically executes db/schema.sql (Postgres's official
+# image runs any .sql file mounted into /docker-entrypoint-initdb.d/ on
+# an empty data volume) -- so `docker compose up -d` gives you a fully
+# schema'd database in one command.
+#
+# Credentials below are throwaway local-dev values, not for production.
+services:
+  db:
+    image: pgrouting/pgrouting:latest
+    container_name: transit_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: transit
+      POSTGRES_PASSWORD: transit_dev_password
+      POSTGRES_DB: transit
+    ports:
+      - "5432:5432"
+    volumes:
+      - transit_pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+
+volumes:
+  transit_pgdata:
