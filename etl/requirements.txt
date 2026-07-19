@@ -1,0 +1,17 @@
+# Independent from backend/requirements.txt on purpose -- etl is a
+# standalone tool, run occasionally, not part of the live API process.
+# See db/README.md for why db/models + db/crud are shared code even
+# though the two packages don't share a venv or a process.
+
+# Database: SQLAlchemy + GeoAlchemy2 (same models as backend, imported
+# from db/ -- see db/README.md), psycopg2 as the driver.
+sqlalchemy>=2.0
+geoalchemy2>=0.15
+psycopg2-binary>=2.9
+
+# Config / env
+python-dotenv>=1.0
+pydantic-settings>=2.6
+
+# OSM (Overpass API) extraction
+requests>=2.32

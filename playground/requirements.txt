@@ -1,0 +1,16 @@
+# Independent from backend/ and etl/ on purpose -- this is a scratch space
+# for exploring raw OSM data before it becomes a real pipeline decision,
+# not code that ships. See README.md.
+
+jupyterlab>=4.2
+pandas>=2.2
+matplotlib>=3.9
+
+# OSM (Overpass API) extraction, same as etl/osm/extract.py.
+requests>=2.32
+
+# Read-only queries against the same Postgres the backend/etl write to, so
+# results here can be sanity-checked against what's actually loaded.
+sqlalchemy>=2.0
+psycopg2-binary>=2.9
+python-dotenv>=1.0

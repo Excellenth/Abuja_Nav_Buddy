@@ -1,0 +1,15 @@
+# Frontend/ is its own separate git repo (github.com/Excellenth/abuja-nav-buddy) --
+# never tracked from here.
+Frontend/
+
+# Claude Code session data -- not part of the project.
+.claude/
+
+# Python (backstop -- each of backend/, etl/, playground/ also has its own
+# .gitignore with the same entries).
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+.ipynb_checkpoints/

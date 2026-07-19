@@ -1,0 +1,26 @@
+# Web framework
+fastapi>=0.115
+uvicorn[standard]>=0.32
+
+# Database: SQLAlchemy + GeoAlchemy2 for the ORM/model layer (Geography
+# columns, spatial query functions), psycopg2 as the driver underneath.
+# Still no GeoPandas -- geometry stays in PostGIS/SQL, never pulled into
+# a Python dataframe. See db/schema.sql for why pgRouting isn't used either
+# (Dijkstra runs in app/services/routing.py at this graph size instead).
+sqlalchemy>=2.0
+geoalchemy2>=0.15
+psycopg2-binary>=2.9
+
+# Config / env
+python-dotenv>=1.0
+pydantic>=2.9
+pydantic-settings>=2.6
+
+# Geocoding / HTTP
+requests>=2.32
+
+# AI (query parsing + chat refinement)
+anthropic>=0.70
+
+# Tests (DB-independent logic only -- see tests/)
+pytest>=8.3
